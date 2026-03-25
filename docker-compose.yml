@@ -1,0 +1,130 @@
+
+
+services:
+
+  ########################################################
+  # POSTGRES DATA WAREHOUSE
+  ########################################################
+  data_warehouse:
+    image: postgres:15
+    container_name: data_warehouse
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${POSTGRES_DB}"
+    ports:
+      - "5433:5432"
+    volumes:
+      - data_warehouse_data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ########################################################
+  # OLLAMA
+  ########################################################
+  ollama:
+    environment:
+      OLLAMA_CONTEXT_LENGTH: 2048
+    build:
+      context: ./docker
+      dockerfile: ollama.Dockerfile
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ollama", "ps"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ########################################################
+  # FASTAPI BACKEND
+  ########################################################
+  backend:
+    build:
+      context: .
+      dockerfile: ./docker/backend.Dockerfile
+    container_name: backend
+    depends_on:
+      data_warehouse:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app
+    volumes:
+      - ./app:/app/app
+      - ./run_agent.py:/app/run_agent.py
+      - ./data/pdfs:/app/data/pdfs
+      - ./data/vectorstore:/app/data/vectorstore
+      - ./data/reports:/app/data/reports
+
+    # 🔴 REMOVED --reload (Docker-safe)
+    command: >
+      uvicorn app.api.main:app
+      --host 0.0.0.0
+      --port 8000
+
+    restart: unless-stopped
+
+    # 🟢 Healthcheck hardened for ML startup
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s   # ← changed
+
+  ########################################################
+  # STREAMLIT FRONTEND
+  ########################################################
+  streamlit:
+    build:
+      context: .
+      dockerfile: ./docker/streamlit.Dockerfile
+    container_name: streamlit
+
+    # 🟢 Don't block UI on backend health
+    depends_on:
+      backend:
+        condition: service_started   # ← changed
+
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app
+    volumes:
+      - ./app:/app/app
+      - ./data/pdfs:/app/data/pdfs
+      - ./data/vectorstore:/app/data/vectorstore
+      - ./data/reports:/app/data/reports
+    command: >
+      streamlit run app/ui/streamlit_app.py
+      --server.port=8501
+      --server.address=0.0.0.0
+      --server.headless=true
+    restart: unless-stopped
+
+volumes:
+  data_warehouse_data:
+  ollama_data:
+
+
+
+

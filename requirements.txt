@@ -1,0 +1,39 @@
+# requirements.txt
+# --------------------- Core ---------------------
+streamlit
+asyncpg
+python-dotenv
+PyPDF2
+reportlab
+requests
+pdfminer.six
+
+# --------------------- Backend API ---------------------
+python-multipart
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+
+
+# --------------------- Vectorstore Dependencies ---------------------
+sentence-transformers
+google-search-results
+serpapi
+
+# --------------------- Vectorstore ---------------------
+faiss-cpu
+
+# --------------------- LLMs ---------------------
+ollama
+aiohttp
+
+# --------------------- LangGraph (Agent) ---------------------
+langgraph
+langchain-core
+
+# --------------------- Utilities ---------------------
+tqdm
+
+
+
