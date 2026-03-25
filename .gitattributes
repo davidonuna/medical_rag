@@ -1,0 +1,23 @@
+# Binary files
+*.pdf binary
+*.ttf binary
+*.otf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pkl binary
+*.pickle binary
+
+# Archives
+*.zip binary
+*.tar binary
+*.gz binary
+
+# Python
+*.pyc binary
+*.pyo binary
+
+# Line endings
+* text=auto eol=lf
